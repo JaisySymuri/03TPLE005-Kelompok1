@@ -29,6 +29,41 @@ func dbConn() (db *sql.DB) {
 
 var tmpl = template.Must(template.ParseGlob("form/*"))
 
+func Login(w http.ResponseWriter, r *http.Request) {
+    if r.Method == "GET" {
+        // Render the login page
+        tmpl.ExecuteTemplate(w, "Login", nil)
+        return
+    }
+
+    if r.Method == "POST" {
+        db := dbConn()
+        username := r.FormValue("username")
+        password := r.FormValue("password")
+
+        var dbUsername, dbPassword string
+        err := db.QueryRow("SELECT Username, Password FROM Employee9998 WHERE Username = ?", username).Scan(&dbUsername, &dbPassword)
+        if err != nil {
+            fmt.Println("Invalid username or error occurred:", err)
+            http.Redirect(w, r, "/login?error=invalid", http.StatusFound)
+            return
+        }
+
+        // Check if the provided password matches the stored password
+        if password != dbPassword {
+            fmt.Println("Incorrect password")
+            http.Redirect(w, r, "/login?error=invalid", http.StatusFound)
+            return
+        }
+
+        // Successful login
+        fmt.Println("Login successful for user:", dbUsername)
+        http.Redirect(w, r, "/", http.StatusFound)
+        defer db.Close()
+    }
+}
+
+
 func getCurrentDirectoryName() (string, error) {
 	// Get the current working directory
 	cwd, err := os.Getwd()
@@ -485,6 +520,8 @@ func main() {
 	r.HandleFunc("/employees", GetEmployees)
 	r.HandleFunc("/employees/{id}", GetEmployeeByID)
 	r.HandleFunc("/create", CreateEmployee)
+	http.HandleFunc("/login", Login)
+
 
 	// Register the UpdateEmployee handler for the "/updateemp/{id}" route
 	r.HandleFunc("/updateemp/{id}", UpdateEmployee).Methods("PUT")
